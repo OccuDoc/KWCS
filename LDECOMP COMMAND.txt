@@ -1,0 +1,1 @@
+ldecomp pwb2 age40 age50 age60 jobss jobwh marr year2020 gender, direct(educ) indirect(epres) rind or rep(50)
