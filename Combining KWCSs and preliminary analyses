@@ -1,0 +1,106 @@
+source("5KWCS.R")
+source("6KWCS.R")
+
+combdata<-rbind(data5,data6)
+
+quart<-quantile(combdata$epres, prob=c(0:4/4), na.rm=T)
+combdata<-combdata %>%
+  mutate(
+    cat.epres=cut(epres, breaks=quart, labels=c("Q1","Q2","Q3","Q4"), lowest.include=T),
+    
+    newwt=wt/2,
+    
+    temp.scale2=ifelse(temp.scale<median(temp.scale,na.rm=T),0,1),
+    dis.scale2=ifelse(dis.scale<median(dis.scale,na.rm=T),0,1),
+    vul.scale2=ifelse(vul.scale<median(vul.scale,na.rm=T),0,1),
+    right.scale2=ifelse(right.scale<median(right.scale,na.rm=T),0,1),
+    uwh.scale2=ifelse(uwh.scale<=median(uwh.scale,na.rm=T),0,1),
+    wage.scale2=ifelse(wage.scale<=median(wage.scale,na.rm=T),0,1),
+    
+    gender=ifelse(gender==0,"men",
+                  ifelse(gender==1,"women",gender))
+  )
+
+meddata<-combdata %>%
+  mutate(
+    age40=ifelse(age=="40-49",1,0),
+    age50=ifelse(age=="50-59",1,0),
+    age60=ifelse(age=="≥ 60",1,0),
+    
+    jobss=ifelse(job=="Service/sales worker",1,0),
+    jobwh=ifelse(job=="Blue collar",1,0),
+    
+    marr=ifelse(marital==1,1,0),
+    
+    gender=ifelse(gender=="men",1,0),
+    
+    year2020=ifelse(year==2020,1,0),
+    
+    educ=case_when(
+      edu=="aCollege" ~ 1,
+      edu=="bHigh" ~ 2,
+      edu=="cMiddle" ~ 3,
+      edu=="dElementary" ~ 4
+    ),
+    
+    educ=as.numeric(educ)
+  ) %>%
+  select(epres,
+         gender, age40, age50, age60,
+         jobss, jobwh, marr, year2020,
+         pwb2, educ)
+
+write.csv(meddata, file="meddata230329.xlsx")
+
+###Normality of EPRES###
+kurtosis(combdata$epres)
+skewness(combdata$epres)
+
+qqnorm(combdata$epres)
+qqline(combdata$epres,col="red",lwd=2)
+
+hist(combdata$epres)
+
+#Good normality#
+
+####Edu > precarious employment###
+
+ORCI<-function(x){
+  a<-summary(x)
+  beta<-a$coefficients[,1]
+  p<-a$coefficients[,4]
+  se<-a$coefficients[,2]
+  or<-exp(a$coefficients[,1])
+  lowcia=round(exp(beta-1.96*se),2)
+  highcia=round(exp(beta+1.96*se),2)
+  label1a=paste(sprintf("%.2f",or)," (",lowcia,"-",highcia,")","  p:", round(p,4),sep="")
+  result=data.frame(label1a)
+  rownames(result)<-rownames(a$coefficients)
+  print(result)
+}
+
+modela<-lm(epres ~ gender + age + job  + marital + year + edu 
+            , data=combdata)
+summary(modela)
+
+
+
+###Precarious employment > Insomnia###
+
+modela2<-glm(pwb2 ~ gender + age + job + year  + marital +
+              epres + edu
+            rc4c, data=combdata frfr`                   `,
+            family=binomial)
+summary(modela2)
+ORCI(modela2)
+
+###Additional analysis###
+
+modelb<-glm(pwb2 ~ gender + age + job + year  + marital +
+               cat.epres + edu
+             , data=combdata,
+             family=binomial)
+summary(modelb)
+ORCI(modelb)
+
+
