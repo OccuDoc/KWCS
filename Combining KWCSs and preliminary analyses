@@ -7,16 +7,6 @@ quart<-quantile(combdata$epres, prob=c(0:4/4), na.rm=T)
 combdata<-combdata %>%
   mutate(
     cat.epres=cut(epres, breaks=quart, labels=c("Q1","Q2","Q3","Q4"), lowest.include=T),
-    
-    newwt=wt/2,
-    
-    temp.scale2=ifelse(temp.scale<median(temp.scale,na.rm=T),0,1),
-    dis.scale2=ifelse(dis.scale<median(dis.scale,na.rm=T),0,1),
-    vul.scale2=ifelse(vul.scale<median(vul.scale,na.rm=T),0,1),
-    right.scale2=ifelse(right.scale<median(right.scale,na.rm=T),0,1),
-    uwh.scale2=ifelse(uwh.scale<=median(uwh.scale,na.rm=T),0,1),
-    wage.scale2=ifelse(wage.scale<=median(wage.scale,na.rm=T),0,1),
-    
     gender=ifelse(gender==0,"men",
                   ifelse(gender==1,"women",gender))
   )
@@ -50,18 +40,205 @@ meddata<-combdata %>%
          jobss, jobwh, marr, year2020,
          pwb2, educ)
 
-write.csv(meddata, file="meddata230329.xlsx")
+openxlsx::write.xlsx(meddata, file="meddata230406.xlsx")
 
 ###Normality of EPRES###
-kurtosis(combdata$epres)
-skewness(combdata$epres)
+menfigs1<-combdata %>%
+  group_by(edu,gender) %>%
+  mutate(gender=ifelse(gender=="men","Men","Women")) %>%
+  filter(gender=="Men") %>%
+  ggplot() +
+  facet_wrap(~ gender, scales="free") +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(vjust=2),
+        text=element_text(size=12),
+        axis.text.x = element_text(size=7),
+        strip.background = element_blank(),
+        strip.text = element_textbox(
+          size = 13,
+          face="bold",
+          color = "#292826", fill = "#F9D342", box.color = "#F9D342",
+          halign = 0.5, linetype = 1, r = unit(5, "pt"), width = unit(1, "npc"),
+          padding = margin(2, 0, 1, 0), margin = margin(3, 3, 3, 3)
+        )) +
+  geom_histogram(aes(x=epres),
+                 color="royalblue4",fill="royalblue4",alpha=0.6)+ 
+  scale_x_continuous(limits = c(0,100))
 
-qqnorm(combdata$epres)
-qqline(combdata$epres,col="red",lwd=2)
+womenfigs1<-combdata %>%
+  group_by(edu,gender) %>%
+  mutate(gender=ifelse(gender=="men","Men","Women")) %>%
+  filter(gender=="Women") %>%
+  ggplot() +
+  facet_wrap(~ gender, scales="free") +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(vjust=2),
+        text=element_text(size=12),
+        axis.text.x = element_text(size=7),
+        strip.background = element_blank(),
+        strip.text = element_textbox(
+          size = 13,
+          face="bold",
+          color = "#292826", fill = "#F9D342", box.color = "#F9D342",
+          halign = 0.5, linetype = 1, r = unit(5, "pt"), width = unit(1, "npc"),
+          padding = margin(2, 0, 1, 0), margin = margin(3, 3, 3, 3)
+        )) +
+  geom_histogram(aes(x=epres),
+                 color="royalblue4",fill="royalblue4",alpha=0.6) + 
+  scale_x_continuous(limits = c(0,100))
 
-hist(combdata$epres)
+allfigs1<-combdata %>%
+  group_by(edu) %>%
+  mutate(gender="All") %>%
+  ggplot() +
+  facet_wrap(~ gender, scales="free") +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(vjust=2),
+        text=element_text(size=12),
+        axis.text.x = element_text(size=7),
+        strip.background = element_blank(),
+        strip.text = element_textbox(
+          size = 13,
+          face="bold",
+          color = "#292826", fill = "#F9D342", box.color = "#F9D342",
+          halign = 0.5, linetype = 1, r = unit(5, "pt"), width = unit(1, "npc"),
+          padding = margin(2, 0, 1, 0), margin = margin(3, 3, 3, 3)
+        )) +
+  geom_histogram(aes(x=epres),
+                 color="royalblue4",fill="royalblue4",alpha=0.6)+ 
+  scale_x_continuous(limits = c(0,100))
+
+Figs1<-allfigs1 + menfigs1 + womenfigs1 & xlab(NULL) 
+Figs1
+
+Figs1<-wrap_elements(panel = Figs1) +
+  labs(tag = "MPE") +
+  theme(
+    plot.tag = element_text(size = rel(1)),
+    plot.tag.position = "bottom"
+  )
+
+ggsave(Figs1, file="Supp Boxplot 230406.png",
+       width=12, height = 5,
+       units = "in",
+       dpi=1000,
+       device = "png")
+
 
 #Good normality#
+
+###Box plot###
+library(ggplot2)
+library(patchwork)
+library(ggtext)
+library(cowplot)
+
+combdata<-combdata %>%
+  mutate(edu=factor(edu,levels=c("aCollege","bHigh","cMiddle","dElementary"),
+                    labels=c("College \nor above","High school","Middle school","Elementary school \nor below")))
+
+
+Allfig<-combdata %>%
+  group_by(edu) %>%
+  mutate(gender="All") %>%
+  ggplot() +
+  facet_wrap(~ gender, scales="free") +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(vjust=2),
+        text=element_text(size=12),
+        axis.text.x = element_text(size=7),
+        strip.background = element_blank(),
+        strip.text = element_textbox(
+          size = 13,
+          face="bold",
+          color = "#292826", fill = "#F9D342", box.color = "#F9D342",
+          halign = 0.5, linetype = 1, r = unit(5, "pt"), width = unit(1, "npc"),
+          padding = margin(2, 0, 1, 0), margin = margin(3, 3, 3, 3)
+        )) +
+  geom_boxplot(aes(x=edu,y=epres, color=edu, fill=edu),
+               alpha=0.1,
+               linewidth=0.5)+
+  scale_y_continuous(limits = c(0,85))+
+  guides(color="none",fill="none") +
+  xlab("Educational Attainment") + ylab("MPE")
+
+Menfig<-combdata %>%
+  group_by(edu,gender) %>%
+  mutate(gender=ifelse(gender=="men","Men","Women")) %>%
+  filter(gender=="Men") %>%
+  ggplot() +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(vjust=2),
+        text=element_text(size=12),
+        axis.text.x = element_text(size=7),
+        strip.background = element_blank(),
+        strip.text = element_textbox(
+          size = 13,
+          face="bold",
+          color = "#292826", fill = "#F9D342", box.color = "#F9D342",
+          halign = 0.5, linetype = 1, r = unit(5, "pt"), width = unit(1, "npc"),
+          padding = margin(2, 0, 1, 0), margin = margin(3, 3, 3, 3)
+        )) +
+  facet_wrap(~ gender, scales="free") +
+  geom_boxplot(aes(x=edu,y=epres, color=edu, fill=edu),
+               alpha=0.1,
+               linewidth=0.5)+
+  scale_y_continuous(limits = c(0,85))+
+  guides(color="none",fill="none") +
+  xlab("Educational Attainment") + ylab("MPE")
+
+Womenfig<-combdata %>%
+  group_by(edu,gender) %>%
+  mutate(gender=ifelse(gender=="men","Men","Women")) %>%
+  filter(gender=="Women") %>%
+  ggplot() +
+  theme_bw()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.y = element_text(vjust=2),
+        text=element_text(size=12),
+        axis.text.x = element_text(size=7),
+        strip.background = element_blank(),
+        strip.text = element_textbox(
+          size = 13,
+          face="bold",
+          color = "#292826", fill = "#F9D342", box.color = "#F9D342",
+          halign = 0.5, linetype = 1, r = unit(5, "pt"), width = unit(1, "npc"),
+          padding = margin(2, 0, 1, 0), margin = margin(3, 3, 3, 3)
+        )) +
+  facet_wrap(~ gender, scales="free") +
+  geom_boxplot(aes(x=edu,y=epres, color=edu, fill=edu),
+               alpha=0.1,
+               linewidth=0.5)+
+  scale_y_continuous(limits = c(0,85))+
+  guides(color="none",fill="none") +
+  xlab("Educational Attainment") + ylab("MPE")
+
+Fig3<-Allfig + Menfig + Womenfig & xlab(NULL) 
+Fig3
+
+Fig3<-wrap_elements(panel = Fig3) +
+  labs(tag = "Educational Attainment") +
+  theme(
+    plot.tag = element_text(size = rel(1)),
+    plot.tag.position = "bottom"
+  )
+
+ggsave(Fig3, file="Main Boxplot 230406.png",
+       width=12, height = 5,
+       units = "in",
+       dpi=1000,
+       device = "png")
 
 ####Edu > precarious employment###
 
@@ -79,17 +256,16 @@ ORCI<-function(x){
   print(result)
 }
 
-modela<-lm(epres ~ gender + age + job  + marital + year + edu 
+modela<-lm(epres ~ age + job  + marital + year + edu 
             , data=combdata)
 summary(modela)
 
 
-
-###Precarious employment > Insomnia###
+###Precarious employment > Poor mental health###
 
 modela2<-glm(pwb2 ~ gender + age + job + year  + marital +
-              epres + edu
-            rc4c, data=combdata frfr`                   `,
+              epres +edu
+             , data=combdata ,
             family=binomial)
 summary(modela2)
 ORCI(modela2)
@@ -102,5 +278,73 @@ modelb<-glm(pwb2 ~ gender + age + job + year  + marital +
              family=binomial)
 summary(modelb)
 ORCI(modelb)
+table(meddata$gender)
+openxlsx::write.xlsx(meddata %>% 
+            filter(gender==1), file="meddata230406_men.xlsx")
 
+openxlsx::write.xlsx(meddata %>% 
+            filter(gender==0), file="meddata230406_women.xlsx")
+
+
+
+
+#Sensitivity Analysis#
+devtools::install_github("doomlab/MeMoBootR")
+library(MeMoBootR)
+
+sensdata<-combdata %>% 
+  mutate(edu=factor(edu),
+         who2=100-(who)*4)
+
+med<-mediation1(y="who2",
+                  x=c("edu"),
+                  m="epres",
+                  cvs=c("gender","age","job","year","marital"),
+                  nboot=5000,
+                  df=sensdata)
+
+med$diagram
+round(med$total.effect,2)
+round(med$direct.effect,2)
+round(med$indirect.effect,2)
+med$boot.ci
+
+round(confint(med$model1),2)
+round(confint(med$model3),2)
+
+medmen<-mediation1(y="who2",
+                  x=c("edu"),
+                  m="epres",
+                  cvs=c("age","job","year","marital"),
+                  nboot=5000,
+                  df=sensdata %>% filter(gender=="men"))
+
+medmen$diagram
+round(medmen$total.effect,2)
+round(medmen$direct.effect,2)
+round(medmen$indirect.effect,2)
+medmen$boot.ci
+
+round(confint(medmen$model1),2)
+round(confint(medmen$model3),2)
+
+
+
+medwomen<-mediation1(y="who2",
+                  x=c("edu"),
+                  m="epres",
+                  cvs=c("age","job","year","marital"),
+                  nboot=5000,
+                  df=sensdata %>% filter(gender=="women"))
+
+medwomen$diagram
+round(medwomen$total.effect,2)
+round(medwomen$direct.effect,2)
+round(medwomen$indirect.effect,2)
+medwomen$boot.ci
+
+round(confint(medwomen$model1),2)
+round(confint(medwomen$model3),2)
+
+s
 
