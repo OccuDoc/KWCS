@@ -1,17 +1,33 @@
 library(data.table)
 library(dplyr)
+library(scales)
 `%ni%`<-Negate(`%in%`)
 
 data<-readRDS("5KWCS.rds") # 50535 initial workers
-#data<-fread("5kwcs.csv")
+
+#####################Sample selection##############
+data<-data %>% filter(TAGE %in% c(19:150)) # age >18 50493 workers
+
+data<-data %>% filter(TEMP_STAT %in% c(2:4)) # Employed workers
 
 
-#####################TQ05##############
-data<-data %>% filter(TAGE %in% c(18:150)) # age >18 50493 workers
-
-data<-data %>% filter(TEMP_STAT %in% c(2:4)) # Employee 33021
-data<-data%>% filter(TEDU!=9,TEDU!=5,!earning1==888888,!earning1==999999,OCC!=10,
-                      is.na(TWTIME_WEEK1)==F,hazard_psy3 %in% c(1:7),earning1 <8888)
+data<-data%>% filter(TEDU!=9,                             ##Missing value
+                     TEDU!=5,
+                     !earning1==888888,!earning1==999999,
+                     OCC!=10,
+                     emp_con_term!=9,
+                     comp_com1!=9,comp_com3!=9,
+                     manaqual1 %in% c(1:5,NA),
+                     wtime_arr1 %in% c(1:4),
+                     boss_gender %in% c(1,2,7),
+                     wsituation11 %in% c(1:5),
+                     wsituation6 %in% c(1:5),
+                     wtime_private %in% c(1:4),
+                     wtime_arr3 %in% c(1:5,NA),
+                     wcomback %in% c(1:7),
+                     wtime_length1 %in% c(1,2), wtime_length2 %in% c(1,2), wtime_length3 %in% c(1,2), wtime_length4 %in% c(1,2),
+                     who1 %in% c(1:6), who2 %in% c(1:6), who3 %in% c(1:6), who4 %in% c(1:6), who5 %in% c(1:6),
+                     is.na(TWTIME_WEEK1)==F,hazard_psy3 %in% c(1:7),earning1 <8888)
 
 
 # final sample = 22035
@@ -35,9 +51,6 @@ data<-within(data,{
   edu[TEDU==2]="cMiddle"
   edu[TEDU==3]="bHigh"
   edu[TEDU==4]="aCollege"
-  hourc=as.character()
-  hourc[TWTIME_WEEK1 <40.5]="a"
-  hourc[TWTIME_WEEK1 >=40.5  ]="b"
 })
 
 ###Temporariness###
@@ -50,13 +63,17 @@ data<-data %>% mutate(
     emp_stat!=1 & emp_con_period_y==0 & emp_con_period_m %in% c(6:11) ~ 3,
     emp_stat!=1 & emp_con_period_y==0 & emp_con_period_m %in% c(0:5) ~ 4),
   
+  temp_du.scale=rescale(temp_du, from=c(min(temp_du,na.rm=T),max(temp_du,na.rm=T)), to=c(0,100)),
+  
   temp_ten=case_when(
     wduration_y>=10 ~ 0,
     wduration_y>=5 &wduration_y<10 ~ 1,
     wduration_y>=3 &wduration_y<5 ~ 2,
     wduration_y>=1 &wduration_y<3 ~ 3,
     wduration_y<1 ~ 4
-  )
+  ),
+  
+  temp_ten.scale=rescale(temp_ten, from=c(min(temp_ten,na.rm=T),max(temp_ten,na.rm=T)), to=c(0,100)),
 )
 
 ###Disempowerment###
@@ -68,23 +85,27 @@ data<-data %>% mutate(
     comp_com1==8 ~ 2,
   ),
   
+  dis_union.scale=rescale(dis_union, from=c(min(dis_union,na.rm=T),max(dis_union,na.rm=T)), to=c(0,100)),
+  
   dis_mt=case_when(
     comp_com3==1 ~ 0,
     comp_com3==2 ~ 1,
     comp_com3==8 ~ 2,
-  )
+  ),
+  
+  dis_mt.scale=rescale(dis_mt, from=c(min(dis_mt,na.rm=T),max(dis_mt,na.rm=T)), to=c(0,100)),
 )
-
 
 ###Veulnerability###
 data<-data %>% mutate(
   vul_boss=case_when (
-    manaqual1==1 ~ 0,
+    manaqual1 %in% c(1,NA) ~ 0,
     manaqual1==2 ~ 1,
     manaqual1==3 ~ 2,
     manaqual1==4 ~ 3,
     manaqual1==5 ~ 4),
   
+  vul_boss.scale=rescale(vul_boss, from=c(min(vul_boss,na.rm=T),max(vul_boss,na.rm=T)), to=c(0,100)),
   
   vul_fair=case_when (
     wsituation11==1 ~ 0,
@@ -92,6 +113,8 @@ data<-data %>% mutate(
     wsituation11==3 ~ 2,
     wsituation11==4 ~ 3,
     wsituation11==5 ~ 4),
+  
+  vul_fair.scale=rescale(vul_fair, from=c(min(vul_fair,na.rm=T),max(vul_fair,na.rm=T)), to=c(0,100)),
 )
 
 ###Right###
@@ -103,22 +126,27 @@ data<-data %>% mutate(
     wsituation6==4 ~ 3,
     wsituation6==5 ~ 4),
   
+  right_boss.scale=rescale(right_boss, from=c(min(right_boss,na.rm=T),max(right_boss,na.rm=T)), to=c(0,100)),
   
   right_off=case_when (
     wtime_private==1 ~ 0,
     wtime_private==2 ~ 1,
     wtime_private==3 ~ 2,
     wtime_private==4 ~ 3),
+  
+  right_off.scale=rescale(right_off, from=c(min(right_off,na.rm=T),max(right_off,na.rm=T)), to=c(0,100)),
 )
 
 ###Uncertain Working Hours###
 data<-data %>% mutate(
   uwh_change=case_when (
-    wtime_arr3==1 ~ 0,
+    wtime_arr3%in% c(1,NA) ~ 0,
     wtime_arr3==5 ~ 1,
     wtime_arr3==4 ~ 2,
     wtime_arr3==3 ~ 3,
     wtime_arr3==2 ~ 4),
+  
+  uwh_change.scale=rescale(uwh_change, from=c(min(uwh_change,na.rm=T),max(uwh_change,na.rm=T)), to=c(0,100)),
   
   uwh_return=case_when (
     wcomback %in% c(5,7)  ~ 0,
@@ -126,6 +154,8 @@ data<-data %>% mutate(
     wcomback==3 ~ 2,
     wcomback==2 ~ 3,
     wcomback==1 ~ 4),
+  
+  uwh_return.scale=rescale(uwh_return, from=c(min(uwh_return,na.rm=T),max(uwh_return,na.rm=T)), to=c(0,100)),
   
   r1=ifelse(wtime_length1==1,1,ifelse(wtime_length1==2,0,NA)),
   r2=ifelse(wtime_length2==1,1,ifelse(wtime_length2==2,0,NA)),
@@ -137,7 +167,9 @@ data<-data %>% mutate(
     r1+r2+r3+r4==3 ~ 1,
     r1+r2+r3+r4==2 ~ 2,
     r1+r2+r3+r4==1 ~ 3,
-    r1+r2+r3+r4==0 ~ 4)
+    r1+r2+r3+r4==0 ~ 4),
+  
+  uwh_reg.scale=rescale(uwh_reg, from=c(min(uwh_reg,na.rm=T),max(uwh_reg,na.rm=T)), to=c(0,100))
 )
 
 ###Wages###
@@ -153,34 +185,30 @@ data<-data %>% mutate(
     earning1<med1 & earning1>=0.6*med1 ~ 2,
     earning1<med1*0.6 ~ 3),
   
+  wage_month.scale=rescale(wage_month, from=c(min(wage_month,na.rm=T),max(wage_month,na.rm=T)), to=c(0,100)),
+  
   wage_hour=case_when (
     ehour>=1.5*med2 ~ 0,
     ehour>=med2 & ehour<1.5*med2 ~ 1,
     ehour<med2 & ehour>=0.6*med2 ~ 2,
-    ehour<med2*0.6 ~ 3)
+    ehour<med2*0.6 ~ 3),
+  
+  wage_hour.scale=rescale(wage_hour, from=c(min(wage_hour,na.rm=T),max(wage_hour,na.rm=T)), to=c(0,100)),
 )
 
 ##Total score of EPRES-E###
 library(datawizard)
 data<-data %>% mutate(
-  temp=temp_du+temp_ten,
-  dis=dis_union+dis_mt,
-  vul=vul_boss+vul_fair,
-  right=right_boss+right_off,
-  uwh=uwh_change+uwh_return+uwh_reg,
-  wage=wage_hour+wage_month,
-  
-  temp.scale=rescale(temp, from=c(min(temp,na.rm=T),max(temp,na.rm=T)), to=c(0,100)),
-  dis.scale=rescale(dis, from=c(min(dis,na.rm=T),max(dis,na.rm=T)), to=c(0,100)),
-  vul.scale=rescale(vul, from=c(min(vul,na.rm=T),max(vul,na.rm=T)), to=c(0,100)),
-  right.scale=rescale(right, from=c(min(right,na.rm=T),max(right,na.rm=T)), to=c(0,100)),
-  uwh.scale=rescale(uwh, from=c(min(uwh,na.rm=T),max(uwh,na.rm=T)), to=c(0,100)),
-  wage.scale=rescale(wage, from=c(min(wage,na.rm=T),max(wage,na.rm=T)), to=c(0,100)),
-  
-  epres=(temp.scale+dis.scale+vul.scale+right.scale+uwh.scale+wage.scale)/6 ,
+  temp=(temp_du.scale+temp_ten.scale)/2,
+  dis=(dis_union.scale+dis_mt.scale)/2,
+  vul=(vul_boss.scale+vul_fair.scale)/2,
+  right=(right_boss.scale+right_off.scale)/2,
+  uwh=(uwh_change.scale+uwh_return.scale+uwh_reg.scale)/3,
+  wage=(wage_hour.scale+wage_month.scale)/2,
+
+  epres=(temp+dis+vul+right+uwh+wage)/6 ,
   
   gender=ifelse(TSEX==1,"men","women"),
-  
 
   who=30-(who1+who2+who3+who4+who5)
   ) %>%
@@ -188,16 +216,13 @@ data<-data %>% mutate(
          pwb2=ifelse(who*4<=50,1,0))
 
 ###########Filter###########
-data5<-data %>% filter(is.na(temp_du)==F,is.na(temp_ten)==F,
-                      is.na(dis_union)==F,is.na(dis_mt)==F,
-                      is.na(vul_boss)==F,is.na(vul_fair)==F,
-                      is.na(right_boss)==F,is.na(right_off)==F,
-                      is.na(uwh_change)==F,is.na(uwh_return)==F,is.na(uwh_reg)==F,
-                      is.na(wage_hour)==F,is.na(wage_month)==F) %>%
+data5<-data %>% 
   mutate(year=2017) %>%
-  select(wt,epres,gender,age,edu,job,marital,temp.scale,dis.scale,year,
-         vul.scale,right.scale,uwh.scale,wage.scale,pwb2) %>%
+  select(wt,epres,gender,age,edu,job,marital,temp,dis,year,
+         vul,right,uwh,wage,pwb2,who) %>%
   tidyr::drop_na()
 
-saveRDS(data,file="5kwcs.rds")
+
+saveRDS(data5,file="5kwcs_prep.rds")
+
 
